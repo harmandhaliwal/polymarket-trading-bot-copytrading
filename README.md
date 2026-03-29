@@ -39,7 +39,7 @@ The bot connects to Polymarket's live orderbook via WebSocket and tracks the wha
 ### Every Market Category, Not Just Crypto
 
 Crypto is one slice of Polymarket. The sharpest wallets are across all of it.
-This bot covers **crypto** (BTC, SOL, ETH, XRP and more), **politics**, **sports**, **world events**, **economics** and anything else Polymarket lists.
+This bot covers **crypto** (BTC, SOL, ETH, XRP and more), **politics**, **sports**, **world events**, **economics**, **weather** and anything else Polymarket lists.
 `COPYTRADE_MARKETS` takes a comma-separated list of slugs. You define how wide you want to go.
 
 ### Live Data, Not Polling

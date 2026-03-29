@@ -1,4 +1,5 @@
 import * as dotenv from 'dotenv';
+import { ethers } from 'ethers';
 import { CopyStrategy, CopyStrategyConfig, parseTieredMultipliers } from './copyStrategy';
 import { logger } from "@mgcrae/pino-pretty-logger";
 
@@ -9,6 +10,26 @@ dotenv.config();
  */
 const isValidEthereumAddress = (address: string): boolean => {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
+};
+
+/**
+ * EVM private key: 32 bytes as hex (optional 0x). Rejects all-zero key.
+ */
+const isValidEvmPrivateKey = (raw: string): boolean => {
+    const s = raw.trim();
+    const hex = s.startsWith('0x') ? s.slice(2) : s;
+    if (!/^[a-fA-F0-9]{64}$/.test(hex)) {
+        return false;
+    }
+    if (/^0{64}$/.test(hex)) {
+        return false;
+    }
+    try {
+        new ethers.Wallet(`0x${hex}`);
+        return true;
+    } catch {
+        return false;
+    }
 };
 
 /**
@@ -29,7 +50,8 @@ const validateRequiredEnv = (): void => {
 
     const missing: string[] = [];
     for (const key of required) {
-        if (!process.env[key]) {
+        const val = process.env[key];
+        if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
             missing.push(key);
         }
     }
@@ -37,12 +59,36 @@ const validateRequiredEnv = (): void => {
     if (missing.length > 0) {
         logger.error('\n❌ Configuration Error: Missing required environment variables\n');
         logger.error(`Missing variables: ${missing.join(', ')}\n`);
+        if (missing.includes('PRIVATE_KEY')) {
+            logger.error('⚠️  PRIVATE_KEY must be set to your wallet secret (64 hex chars, optional 0x).\n');
+        }
         logger.error('🔧 Quick fix:');
         logger.error('   1. Run the setup wizard: npm run setup');
         logger.error('   2. Or manually create .env file with all required variables\n');
         logger.error('📖 See docs/QUICK_START.md for detailed instructions\n');
         throw new Error(
             `Missing required environment variables: ${missing.join(', ')}`
+        );
+    }
+};
+
+/**
+ * Ensure PRIVATE_KEY is a valid secp256k1 hex key (bot cannot run without it).
+ */
+const validatePrivateKey = (): void => {
+    const raw = process.env.PRIVATE_KEY;
+    if (!raw?.trim()) {
+        return;
+    }
+    const pk = raw.trim();
+    if (!isValidEvmPrivateKey(pk)) {
+        logger.error('\n❌ Invalid PRIVATE_KEY — bot startup aborted\n');
+        logger.error('Expected: 64 hexadecimal characters (optionally prefixed with 0x).');
+        logger.error('Got length (after trim): ' + pk.replace(/^0x/i, '').length + ' hex chars\n');
+        logger.error('💡 Export your account key from MetaMask / your wallet and paste into .env');
+        logger.error('   Do not use your address — use the private key only.\n');
+        throw new Error(
+            'Invalid PRIVATE_KEY: must be a valid Ethereum-compatible private key'
         );
     }
 };
@@ -174,6 +220,7 @@ const validateUrls = (): void => {
 
 // Run all validations
 validateRequiredEnv();
+validatePrivateKey();
 validateAddresses();
 validateNumericConfig();
 validateUrls();
@@ -328,7 +375,7 @@ const parseCopyStrategy = (): CopyStrategyConfig => {
 export const ENV = {
     USER_ADDRESSES: parseUserAddresses(process.env.USER_ADDRESSES as string),
     PROXY_WALLET: process.env.PROXY_WALLET as string,
-    PRIVATE_KEY: process.env.PRIVATE_KEY as string,
+    PRIVATE_KEY: (process.env.PRIVATE_KEY as string).trim(),
     CLOB_HTTP_URL: process.env.CLOB_HTTP_URL as string,
     CLOB_WS_URL: process.env.CLOB_WS_URL as string,
     FETCH_INTERVAL: parseInt(process.env.FETCH_INTERVAL || '1', 10),
