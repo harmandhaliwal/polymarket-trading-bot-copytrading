@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { getContractConfig } from '@polymarket/clob-client';
+import { getContractConfig } from '@polymarket/clob-client-v2';
 import { ENV } from '../config/env';
 
 const PROXY_WALLET = ENV.PROXY_WALLET;
